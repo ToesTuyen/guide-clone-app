@@ -177,7 +177,7 @@
   <!-- FORM NHẬP PARAM -->
   <section class="panel" id="params">
     <h3>⚙️ Thông số dự án</h3>
-    <p class="desc">Nhập thông tin app cần clone — mọi bước bên dưới (lệnh adb, link Play Store, nội dung prompt) sẽ <b>tự cập nhật ngay</b> theo giá trị bạn gõ. Thông số được lưu lại trên máy này.</p>
+    <p class="desc">Nhập thông tin app cần clone — mọi bước bên dưới (lệnh adb, link Play Store, nội dung prompt) sẽ <b>tự cập nhật ngay</b>. Bấm <b>💾 Lưu</b> để trình duyệt nhớ, lần sau mở lại <b>tự điền</b> (không phải nhập lại).</p>
     <div class="grid">
       <div class="field full">
         <label>Link Play Store <span class="kk">dán vào đây</span></label>
@@ -212,9 +212,10 @@
       </div>
     </div>
     <div class="panel-actions">
-      <button class="btn primary" onclick="resetParams()">↺ Xoá hết</button>
+      <button class="btn primary" onclick="saveParams()">💾 Lưu thông số</button>
       <button class="btn" onclick="copyAll()">⧉ Copy toàn bộ prompt</button>
-      <span class="saved" id="savedTag">✓ Đã lưu</span>
+      <button class="btn" onclick="resetParams()">↺ Xoá hết</button>
+      <span class="saved" id="savedTag"></span>
     </div>
   </section>
 
@@ -512,6 +513,13 @@
     }catch(e){}
   }
 
+  function saveParams(){
+    var p = getVals();
+    try{ localStorage.setItem(LS_KEY, JSON.stringify(p)); }catch(e){}
+    applyParams(false);
+    var t = document.getElementById('savedTag');
+    if(t){ t.textContent = '✓ Đã lưu vào trình duyệt — lần sau tự điền'; t.classList.add('show'); }
+  }
   function resetParams(){
     PARAM_KEYS.forEach(function(k){
       var el = document.getElementById('f_'+k);
