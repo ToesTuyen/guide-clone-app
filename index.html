@@ -1,0 +1,677 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Quy trình Clone &amp; Hoàn thiện App — VN_NAMI</title>
+<style>
+  :root{
+    --bg:#f5f6f8; --card:#ffffff; --ink:#1c2230; --muted:#5c6478; --line:#e6e8ee;
+    --code-bg:#0f1420; --code-ink:#e7ecf5; --chip:#eef1f7; --chip-ink:#33405c;
+    --hot:#c1121f; --note-bg:#fff8e1; --note-line:#f2c94c; --note-ink:#7a5a00;
+    --b1:#2f6fed; --b2:#7c3aed; --b3:#0f9d8f; --b4:#f28c1c; --b5:#e5484d; --b6:#3b5bdb; --b7:#d6409f;
+    --shadow:0 1px 2px rgba(20,30,60,.06),0 8px 24px rgba(20,30,60,.06);
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#0e1117; --card:#161b24; --ink:#e7ecf5; --muted:#9aa4b8; --line:#252c3a;
+      --code-bg:#0a0d14; --code-ink:#e7ecf5; --chip:#1e2532; --chip-ink:#b7c2da;
+      --hot:#ff6b6b; --note-bg:#2a2410; --note-line:#8a6d13; --note-ink:#ffd868;
+      --shadow:0 1px 2px rgba(0,0,0,.4),0 10px 30px rgba(0,0,0,.35);
+    }
+  }
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    margin:0; background:var(--bg); color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+    line-height:1.6; font-size:16px;
+  }
+  .wrap{max-width:860px; margin:0 auto; padding:32px 20px 80px}
+  code,kbd,.mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,"Roboto Mono",monospace}
+
+  /* Header */
+  header.hero{
+    text-align:center; padding:34px 22px; border-radius:20px; margin-bottom:22px;
+    background:linear-gradient(135deg,#2f6fed,#7c3aed 55%,#e5484d);
+    color:#fff; box-shadow:var(--shadow);
+  }
+  header.hero h1{margin:0; font-size:26px; letter-spacing:.2px; font-weight:800}
+  header.hero p{margin:8px 0 0; opacity:.92; font-size:14.5px}
+
+  /* Params panel */
+  .panel{
+    background:var(--card); border:1px solid var(--line); border-top:4px solid var(--b2);
+    border-radius:16px; padding:18px 20px 20px; margin:0 0 24px; box-shadow:var(--shadow);
+  }
+  .panel h3{margin:0; font-size:15.5px; font-weight:800; display:flex; align-items:center; gap:8px}
+  .panel .desc{margin:4px 0 16px; font-size:13px; color:var(--muted)}
+  .grid{display:grid; grid-template-columns:1fr 1fr; gap:13px 16px}
+  @media (max-width:640px){ .grid{grid-template-columns:1fr} }
+  .field{display:flex; flex-direction:column; gap:5px}
+  .field.full{grid-column:1 / -1}
+  .field label{font-size:11.5px; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:.4px}
+  .field label .kk{color:var(--b2); text-transform:none; letter-spacing:0}
+  .field input{
+    font:inherit; font-size:13.5px; padding:9px 11px; border-radius:9px;
+    border:1px solid var(--line); background:var(--bg); color:var(--ink);
+    font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  }
+  .field input:focus{outline:none; border-color:var(--b2); box-shadow:0 0 0 3px color-mix(in srgb,var(--b2) 18%,transparent)}
+  .field input::placeholder{color:var(--muted); opacity:.5}
+  .panel-actions{display:flex; gap:10px; margin-top:16px; flex-wrap:wrap; align-items:center}
+  .btn{font:inherit; font-size:13px; font-weight:700; cursor:pointer; border-radius:9px; padding:9px 16px; border:1px solid var(--line); background:var(--card); color:var(--ink)}
+  .btn.primary{background:var(--b2); color:#fff; border-color:transparent}
+  .btn:active{transform:translateY(1px)}
+  .fhint{font-size:11px; color:var(--muted); font-weight:500; font-family:-apple-system,sans-serif}
+  .fhint.ok{color:var(--b3); font-weight:700}
+  .fhint.err{color:var(--hot); font-weight:700}
+  .mini{font:inherit; font-size:10.5px; font-weight:700; cursor:pointer; color:var(--b2); background:transparent; border:1px solid color-mix(in srgb,var(--b2) 40%,var(--line)); border-radius:6px; padding:1px 7px; margin-left:4px; text-transform:none; letter-spacing:0; vertical-align:middle}
+  .mini:active{transform:translateY(1px)}
+  .saved{font-size:12px; color:var(--b3); font-weight:700; opacity:0; transition:opacity .2s}
+  .saved.show{opacity:1}
+
+  /* TOC */
+  nav.toc{display:flex; flex-wrap:wrap; gap:8px; justify-content:center; margin:0 0 30px}
+  nav.toc a{
+    text-decoration:none; font-size:13px; font-weight:600; color:var(--chip-ink);
+    background:var(--chip); border:1px solid var(--line); padding:6px 12px; border-radius:999px;
+    transition:transform .12s ease;
+  }
+  nav.toc a:hover{transform:translateY(-1px)}
+
+  /* Step card */
+  section.step{
+    background:var(--card); border:1px solid var(--line); border-radius:16px;
+    padding:22px 22px 24px; margin:0 0 20px; box-shadow:var(--shadow);
+    border-left:5px solid var(--accent); scroll-margin-top:16px;
+  }
+  .step-head{display:flex; align-items:center; gap:14px; margin-bottom:4px}
+  .badge{
+    flex:0 0 auto; width:40px; height:40px; border-radius:12px; color:#fff;
+    display:flex; align-items:center; justify-content:center; font-weight:800; font-size:17px;
+    background:var(--accent); box-shadow:0 4px 12px color-mix(in srgb,var(--accent) 40%,transparent);
+  }
+  .step-head h2{margin:0; font-size:19px; font-weight:800}
+  .step-head .sub{display:block; font-size:12.5px; font-weight:600; color:var(--muted); margin-top:2px}
+
+  /* Prompt block */
+  .prompt{border:1px solid var(--line); border-radius:12px; overflow:hidden; margin-top:16px; background:var(--bg)}
+  .prompt-head{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:8px 12px; background:color-mix(in srgb,var(--accent) 10%,var(--card));
+    border-bottom:1px solid var(--line);
+  }
+  .prompt-label{font-size:12px; font-weight:800; letter-spacing:.6px; color:var(--accent)}
+  .copy-btn{
+    font:inherit; font-size:12px; font-weight:700; cursor:pointer; color:var(--chip-ink);
+    background:var(--card); border:1px solid var(--line); border-radius:8px; padding:4px 12px;
+  }
+  .copy-btn:active{transform:translateY(1px)}
+  .copy-btn.ok{color:#fff; background:var(--b3); border-color:transparent}
+  .prompt-body{padding:14px 16px}
+  .prompt-body p{margin:0 0 10px}
+  .prompt-body p:last-child{margin-bottom:0}
+
+  /* variables + values */
+  .vars{margin:0 0 12px; display:grid; gap:4px; padding:10px 12px; background:color-mix(in srgb,var(--b2) 6%,var(--card)); border:1px dashed color-mix(in srgb,var(--b2) 30%,var(--line)); border-radius:9px}
+  .vars .v{font-size:13.5px; font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+  .vars .k{color:var(--b2); font-weight:700}
+  .vars .k::before{content:"$"; opacity:.6}
+  .vars .val{color:var(--ink)}
+  .pval{color:var(--b2); font-weight:700; background:color-mix(in srgb,var(--b2) 12%,transparent); border-radius:4px; padding:0 5px; word-break:break-word}
+  .edit{color:var(--b3); font-weight:700; background:color-mix(in srgb,var(--b3) 12%,transparent); border-bottom:1.5px dashed var(--b3); border-radius:4px 4px 0 0; padding:0 5px; outline:none; cursor:text}
+  .edit:focus{background:color-mix(in srgb,var(--b3) 22%,transparent)}
+  .edit-hint{font-family:-apple-system,sans-serif; font-size:11px; font-weight:600; color:var(--b3); opacity:.75; margin-left:4px; user-select:none}
+
+  /* numbered requirements */
+  .reqs{margin:10px 0 0; display:grid; gap:8px}
+  .req{display:flex; gap:10px; align-items:flex-start}
+  .req .n{
+    flex:0 0 auto; min-width:22px; height:22px; padding:0 6px; border-radius:7px;
+    background:var(--chip); color:var(--chip-ink); font-size:12px; font-weight:800;
+    display:flex; align-items:center; justify-content:center; margin-top:2px;
+  }
+  .req .rq{flex:1}
+  .rq .subdash{margin:7px 0 0; display:grid; gap:5px}
+  .rq .subdash > div{position:relative; padding-left:15px; font-size:13.5px}
+  .rq .subdash > div::before{content:"–"; position:absolute; left:2px; color:var(--muted)}
+  .rule-h{margin:18px 0 8px; font-size:12.5px; font-weight:800; letter-spacing:.5px; color:var(--accent); text-transform:uppercase}
+  .rule-h:first-child{margin-top:0}
+  ul.dash{margin:8px 0 0; padding:0; list-style:none; display:grid; gap:7px}
+  ul.dash li{position:relative; padding-left:16px; font-size:14px}
+  ul.dash li::before{content:"–"; position:absolute; left:3px; color:var(--muted); font-weight:700}
+
+  .hot{color:var(--hot); font-weight:800}
+  .kw{background:var(--chip); color:var(--chip-ink); border-radius:5px; padding:1px 6px; font-size:13px; font-weight:600}
+  em.f{font-style:normal; color:var(--muted)}
+
+  pre.cmd{
+    margin:12px 0 0; background:var(--code-bg); color:var(--code-ink);
+    border-radius:10px; padding:14px 16px; overflow-x:auto; font-size:13px; line-height:1.55;
+  }
+  pre.cmd .fl{color:#7dd3fc}
+  pre.cmd .id{color:#fca5a5}
+  .prompt-body.cmd-wrap{padding:0}
+  .prompt-body.cmd-wrap pre.cmd{margin:0; border-radius:0}
+
+  .note{
+    margin-top:14px; background:var(--note-bg); border:1px solid var(--note-line);
+    color:var(--note-ink); border-radius:10px; padding:10px 14px; font-size:14px; font-weight:600;
+  }
+  .note b{font-weight:800}
+  .lead{color:var(--muted); font-size:14.5px; margin:2px 0 0}
+
+  footer{text-align:center; color:var(--muted); font-size:12.5px; margin-top:30px}
+  a.inline{color:var(--b1); word-break:break-all}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="hero">
+    <h1>Quy trình Clone &amp; Hoàn thiện App</h1>
+    <p>VN_NAMI scaffold · 7 bước · mỗi PROMPT là 1 khối — bấm <b>Copy</b> rồi dán</p>
+  </header>
+
+  <!-- FORM NHẬP PARAM -->
+  <section class="panel" id="params">
+    <h3>⚙️ Thông số dự án</h3>
+    <p class="desc">Nhập thông tin app cần clone — mọi bước bên dưới (lệnh adb, link Play Store, nội dung prompt) sẽ <b>tự cập nhật ngay</b> theo giá trị bạn gõ. Thông số được lưu lại trên máy này.</p>
+    <div class="grid">
+      <div class="field full">
+        <label>Link Play Store <span class="kk">dán vào đây</span></label>
+        <input id="f_store_link" type="text" spellcheck="false" placeholder="https://play.google.com/store/apps/details?id=…">
+        <span class="fhint">Dán link → tự tách package + tự lấy tên app.</span>
+      </div>
+      <div class="field">
+        <label>Tên app mẫu <span class="kk">$app_name_origin</span> <button type="button" class="mini" id="fetchName" title="Lấy lại tên từ Play Store">↻ lấy tên</button></label>
+        <input id="f_app_name_origin" type="text" placeholder="vd: Sample App" spellcheck="false">
+        <span class="fhint" id="nameStatus">Tự lấy khi nhập link/package · hoặc gõ tay</span>
+      </div>
+      <div class="field">
+        <label>Package app mẫu <span class="kk">id_app</span></label>
+        <input id="f_id_app" type="text" placeholder="vd: com.example.sampleapp" spellcheck="false">
+      </div>
+      <div class="field full">
+        <label>source BASE — scaffold copy TỪ <span class="kk">$source_base</span></label>
+        <input id="f_source_base" type="text" placeholder="vd: ~/VN_NAMI/<scaffold-base>" spellcheck="false">
+      </div>
+      <div class="field full">
+        <label>source CLONE — path project để LÀM VIỆC <span class="kk">$source_clone</span></label>
+        <input id="f_source_clone" type="text" placeholder="vd: ~/VN_NAMI/<app-clone>" spellcheck="false">
+        <span class="fhint">Clone nằm ở path KHÁC base — Bước 3/4/5/6 đều sửa vào đây, không đụng base.</span>
+      </div>
+      <div class="field full">
+        <label>File hướng dẫn clone <span class="kk">$name_file</span></label>
+        <input id="f_name_file" type="text" placeholder="vd: /Downloads/CLONE_PROMPT_macOS.md" spellcheck="false">
+      </div>
+      <div class="field full">
+        <label>File hướng dẫn IAP <span class="kk">$file_tich_hop</span></label>
+        <input id="f_file_tich_hop" type="text" placeholder="vd: /Downloads/HUONG_DAN_TICH_HOP.md" spellcheck="false">
+      </div>
+    </div>
+    <div class="panel-actions">
+      <button class="btn primary" onclick="resetParams()">↺ Xoá hết</button>
+      <button class="btn" onclick="copyAll()">⧉ Copy toàn bộ prompt</button>
+      <span class="saved" id="savedTag">✓ Đã lưu</span>
+    </div>
+  </section>
+
+  <nav class="toc">
+    <a href="#b1">1 · Cài app mẫu</a>
+    <a href="#b2">2 · Clone</a>
+    <a href="#b3">3 · Hoàn thiện tính năng</a>
+    <a href="#b4">4 · Đặt ads</a>
+    <a href="#b5">5 · IAP</a>
+    <a href="#b6">6 · Language</a>
+    <a href="#b7">7 · AI agent test</a>
+  </nav>
+
+  <!-- BƯỚC 1 -->
+  <section class="step" id="b1" style="--accent:var(--b1)">
+    <div class="step-head">
+      <div class="badge">1</div>
+      <div><h2>Cài đặt app mẫu dựa vào id app</h2>
+      <span class="sub">Mở CH Play tới đúng app rồi cài về máy thật</span></div>
+    </div>
+    <div class="prompt">
+      <div class="prompt-head"><span class="prompt-label">LỆNH ADB</span>
+        <button class="copy-btn" onclick="copyPrompt(this)">Copy</button></div>
+      <div class="prompt-body cmd-wrap"><pre class="cmd">adb shell am start -a android.intent.action.VIEW <span class="fl">\</span>
+    -d "market://details?id=<span class="id" data-p="id_app">com.example.sampleapp</span>" <span class="fl">\</span>
+    com.android.vending</pre></div>
+    </div>
+  </section>
+
+  <!-- BƯỚC 2 -->
+  <section class="step" id="b2" style="--accent:var(--b2)">
+    <div class="step-head">
+      <div class="badge">2</div>
+      <div><h2>Clone app dựa vào source code</h2>
+      <span class="sub">Copy + rename scaffold, dựng lại UI/tree, log đầy đủ</span></div>
+    </div>
+
+    <div class="prompt">
+      <div class="prompt-head"><span class="prompt-label">PROMPT 1</span>
+        <button class="copy-btn" onclick="copyPrompt(this)">Copy</button></div>
+      <div class="prompt-body">
+        <div class="vars">
+          <div class="v"><span class="k">source_base</span> = <span class="val" data-p="source_base">~/VN_NAMI/<scaffold-base></span></div>
+          <div class="v"><span class="k">source_clone</span> = <span class="val" data-p="source_clone">~/VN_NAMI/<app-clone></span></div>
+          <div class="v"><span class="k">app_name_origin</span> = <span class="val" data-p="app_name_origin">Sample App</span></div>
+          <div class="v"><span class="k">name_file</span> = <span class="val" data-p="name_file">/Downloads/CLONE_PROMPT_macOS.md</span></div>
+        </div>
+        <p>Dựa vào scaffold <span class="pval" data-p="source_base">~/VN_NAMI/<scaffold-base></span> thực hiện clone app <span class="pval" data-p="app_name_origin">Sample App</span> đang mở trên điện thoại thật kết nối bằng ADB.</p>
+        <div class="reqs">
+          <div class="req"><span class="n">1</span><span>Quy trình kết nối và clone theo file <span class="pval" data-p="name_file">/Downloads/CLONE_PROMPT_macOS.md</span>, làm nhanh và chính xác nhất: <span class="hot">sao chép</span> folder <span class="pval" data-p="source_base">~/VN_NAMI/<scaffold-base></span> sang <span class="pval" data-p="source_clone">~/VN_NAMI/<app-clone></span> (đổi tên theo app). Từ đây <span class="hot">chỉ làm việc trên source_clone</span>, KHÔNG sửa vào source_base.</span></div>
+          <div class="req"><span class="n">2</span><span>Click vào <span class="hot">từng</span> icon, image, button, layout… mà nghi ngờ có thể click để nắm được tree UI và tính năng.</span></div>
+          <div class="req"><span class="n">3</span><span>Icon/badge/thumbnail <span class="hot">PHẢI</span> dùng drawable <span class="hot">THẬT</span> trích từ APK gốc, <span class="hot">TUYỆT ĐỐI không</span> vẽ bằng ký tự Unicode (▶ ❚❚ ♪ 👤 🔒 ✕ ↗) hay <span class="kw">Box+CircleShape</span> — app mẫu bind icon ở runtime nên layout không có <span class="kw">android:src</span>, phải grep res/smali tìm đúng asset; kèm bẫy icon fill <span class="hot">trắng vô hình</span> trên header trắng → phải tint.</span></div>
+          <div class="req"><span class="n">4</span><span>Dựa vào <span class="kw">logger.kt</span> của base-application-wrapper thực hiện <span class="hot">thêm log</span> khi hiển thị màn hình hoặc khi người dùng click vào button/icon/image/item/text… (mọi thứ có thể click); curl của BE và response nếu dùng BE cũng phải in log.</span></div>
+        </div>
+        <p style="margin-top:12px">Lưu ý chỉ để <span class="hot">PORTRAIT</span>, không auto rotation, <span class="hot">ẨN</span> navigation bottom bar của hệ thống.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- BƯỚC 3 -->
+  <section class="step" id="b3" style="--accent:var(--b3)">
+    <div class="step-head">
+      <div class="badge">3</div>
+      <div><h2>Rà soát &amp; hoàn thiện tính năng</h2>
+      <span class="sub">Bao gồm test thủ công</span></div>
+    </div>
+
+    <div class="prompt">
+      <div class="prompt-head"><span class="prompt-label">PROMPT 1</span>
+        <button class="copy-btn" onclick="copyPrompt(this)">Copy</button></div>
+      <div class="prompt-body">
+        <div class="vars"><div class="v"><span class="k">name_file</span> = <span class="val" data-p="name_file">/Downloads/CLONE_PROMPT_macOS.md</span></div></div>
+        <p>Rà soát lại 1 lượt các màn theo tree, tham khảo cách clone tính năng trong <span class="pval" data-p="name_file">/Downloads/CLONE_PROMPT_macOS.md</span>.</p>
+        <p>So với app mẫu và app đã clone, app đã clone còn nhiều màn <span class="hot">chưa giống UI</span> và <span class="hot">chưa hoàn thiện</span> về tính năng.</p>
+      </div>
+    </div>
+
+    <div class="prompt">
+      <div class="prompt-head"><span class="prompt-label">PROMPT 2</span>
+        <button class="copy-btn" onclick="copyPrompt(this)">Copy</button></div>
+      <div class="prompt-body">
+        <div class="vars"><div class="v"><span class="k">feature</span> = <span class="edit" id="featEdit" contenteditable="true" spellcheck="false" title="Bấm để sửa trực tiếp">compress video</span> <span class="edit-hint">✎ sửa trực tiếp</span></div></div>
+        <p>Dựa vào app mẫu đang hiển thị, check phần <span class="pval" id="featRef">compress video</span>.</p>
+        <p>Hiện tại app mình vẫn chưa giống app mẫu về tính năng và UI, check theo tree từ gốc đến ngon.</p>
+      </div>
+    </div>
+
+    <div class="note">✓ <b>Cần đảm bảo tính năng đã hoạt động 100%</b> trước khi sang Bước 4.</div>
+  </section>
+
+  <!-- BƯỚC 4 -->
+  <section class="step" id="b4" style="--accent:var(--b4)">
+    <div class="step-head">
+      <div class="badge">4</div>
+      <div><h2>Đặt ads</h2>
+      <span class="sub">banner · inter · native — tối đa 20 key</span></div>
+    </div>
+
+    <div class="prompt">
+      <div class="prompt-head"><span class="prompt-label">PROMPT 1</span>
+        <button class="copy-btn" onclick="copyPrompt(this)">Copy</button></div>
+      <div class="prompt-body">
+        <div class="vars"><div class="v"><span class="k">source_clone</span> = <span class="val" data-p="source_clone">~/VN_NAMI/<app-clone></span></div></div>
+        <p>Tiền đề: app đã dùng scaffold <span class="kw">:base-application-wrapper</span> — <span class="kw">BannerAdView</span> / <span class="kw">NativeAdView</span> / <span class="kw">rememberShowInterstitial()</span>, hệ key <span class="kw">adsScript</span> ↔ <span class="kw">default_ads_config.json</span>. Đặt ads vào <span class="hot">project clone</span> <span class="pval" data-p="source_clone">~/VN_NAMI/<app-clone></span> (sửa module <span class="kw">app</span> của clone — <span class="hot">KHÔNG sửa vào source_base</span>), <span class="hot">xoá key cũ</span> rồi đặt lại ĐÚNG theo luật:</p>
+
+        <div class="rule-h">⬛ Luật Ads</div>
+        <div class="reqs">
+          <div class="req"><span class="n">1</span><div class="rq"><b>Interstitial = THUẾ ĐIỀU HƯỚNG, không phải thuế hành động.</b>
+            <div class="subdash">
+              <div>Mỗi feature/tab mở ra = 1 key riêng (<span class="kw">inter_open_*</span> / <span class="kw">inter_tab_*</span>) để đo eCPM từng placement.</div>
+              <div>Back-to-Home = 1 key chung <span class="kw">inter_back_home</span>, bắn ở CẢ nút back lẫn <span class="kw">BackHandler</span>, qua <span class="kw">showInter(key){ popSafe() }</span>.</div>
+              <div><span class="hot">CẤM inter</span> trên: hành động lõi (bật đèn pin, play nhạc), tap Home→Detail đầu tiên, tab mặc định/tab đầu, và sau rewarded ad (tránh 2 ads liên tiếp).</div>
+            </div></div></div>
+          <div class="req"><span class="n">2</span><div class="rq"><b>Banner = phủ nền:</b> bottom-pinned dưới navbar (<span class="kw">navigationBarsPadding</span>), gần như mọi màn kể cả onboarding/intro (<span class="kw">banner_intro</span>); gom key theo họ màn hình (<span class="kw">banner_home</span> / <span class="kw">banner_inner</span> / <span class="kw">banner_tool</span>…).</div></div>
+          <div class="req"><span class="n">3</span><div class="rq"><b>Native = đúng 1 slot:</b> chèn <span class="hot">SAU item đầu tiên</span> của list chính (<span class="kw">native_list</span>), no-media; gần toggle/button thì thêm spacer 24dp chống mis-click.</div></div>
+          <div class="req"><span class="n">4</span><div class="rq"><span class="hot">VÙNG CẤM:</span> Settings / Language / Policy / Feedback <span class="hot">KHÔNG BAO GIỜ</span> có ads.</div></div>
+          <div class="req"><span class="n">5</span><div class="rq">Không tự làm counter tần suất — dùng interval toàn cục qua key <span class="kw">inter_splash</span> của SDK.</div></div>
+          <div class="req"><span class="n">6</span><div class="rq">Rewarded chỉ dùng khi có cơ chế "xem ad đổi 1 lượt free" (kiểu Authenticator), còn lại bỏ.</div></div>
+        </div>
+
+        <div class="rule-h">⬛ Luật Key (≤ 20)</div>
+        <ul class="dash">
+          <li>Tổng <span class="hot">≤ 20 key</span>. <span class="hot">4 base key KHÔNG ĐƯỢC XOÁ</span> (AAR đọc thẳng bằng string): <span class="kw">open_splash</span>, <span class="kw">inter_splash</span>, <span class="kw">native_language</span>, <span class="kw">open_all</span>. Xoá sạch key chết leftover (<span class="kw">banner_scan</span> / <span class="kw">reward_play</span>… nếu không dùng).</li>
+          <li><span class="hot">SHIP DARK</span>: để toàn bộ unit id <span class="hot">RỖNG</span> trong <span class="kw">default_ads_config.json</span> (key rỗng = silent skip, không crash), đẩy id thật qua Firebase Remote Config sau.</li>
+          <li><span class="kw">admob_app_id</span> trong <span class="kw">ads_id.xml</span> = <span class="kw">ca-app-pub-XXXXXXXXXXXXXXXX~XXXXXXXXXX</span> — <span class="hot">KHÔNG mượn unit id app khác</span> (tránh dùng lại unit id của app khác).</li>
+          <li><span class="kw">*_DEV</span> override (INTER_DEV / NATIVE_DEV / BANNER_DEV / OPEN_DEV) chỉ để QA bằng Google test id, <span class="hot">PHẢI clear về ""</span> trước khi live.</li>
+          <li>Key ngoài-ads đi chung JSON: <span class="kw">privacy_policy</span>, <span class="kw">term_of_use</span> (+ <span class="kw">media_base</span> / <span class="kw">openrouter_key</span> nếu app cần).</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="note">✓ Audit placement hiện có vs luật → sửa → <b>test thủ công</b> trên máy thật (inter đúng transition qua <span class="kw">*_DEV</span>, banner/native đúng chỗ, Settings sạch ads). Xong → xin ads value thật.</div>
+  </section>
+
+  <!-- BƯỚC 5 -->
+  <section class="step" id="b5" style="--accent:var(--b5)">
+    <div class="step-head">
+      <div class="badge">5</div>
+      <div><h2>Tích hợp IAP</h2>
+      <span class="sub">Show paywall của lib + ẩn upsell khi đã premium</span></div>
+    </div>
+
+    <div class="prompt">
+      <div class="prompt-head"><span class="prompt-label">PROMPT 1</span>
+        <button class="copy-btn" onclick="copyPrompt(this)">Copy</button></div>
+      <div class="prompt-body">
+        <div class="vars"><div class="v"><span class="k">file_tich_hop</span> = <span class="val" data-p="file_tich_hop">/Downloads/HUONG_DAN_TICH_HOP.md</span></div></div>
+        <p>Tham khảo <span class="kw">8.3</span> trong <span class="pval" data-p="file_tich_hop">/Downloads/HUONG_DAN_TICH_HOP.md</span>, thực hiện show IAP của lib theo hướng dẫn. base-application-wrapper sẽ thực hiện nó và từ module app call tới method của wrapper.</p>
+      </div>
+    </div>
+
+    <div class="prompt">
+      <div class="prompt-head"><span class="prompt-label">PROMPT 2</span>
+        <button class="copy-btn" onclick="copyPrompt(this)">Copy</button></div>
+      <div class="prompt-body">
+        <p>Trong app đã clone (của session hiện tại) — và áp dụng cho cả các clone VN_NAMI khác.</p>
+
+        <div class="rule-h">⬛ Chọn cách gate theo loại app</div>
+        <ul class="dash">
+          <li><b>Tool thuần</b> → KHÔNG gate feature nào; premium = <span class="hot">remove-ads</span>. Entry: crown ở Home top-bar + row "Remove Ads" trong Settings.</li>
+          <li><b>One-lever</b> → gate đúng 1 feature đắt: cho 1 lần free trial (SharedPrefs flag), hết trial → mở paywall thẳng; có thể thêm dialog "Xem ad | Mua Pro" (rewarded) trước khi chặn hẳn.</li>
+          <li><b>Content</b> → browse/preview/play <span class="hot">FREE toàn bộ</span>; gate ở <span class="hot">KHOẢNH KHẮC PAYOFF</span> (set-as / download / apply / AI-gen), mỗi call-site tự guard.</li>
+          <li><b>Pattern bắt buộc:</b> call-site guard <span class="kw">if (!premium) openPro() else action</span> (IapActivity của lib <span class="hot">KHÔNG tự check</span>); openPro = <span class="kw">IapLauncher.open</span>, fallback route PURCHASE nếu lib fail; SKU <span class="kw">release_premium_access</span> + weekly/monthly/yearly; <span class="kw">PremiumProvider.refresh()</span> ở Application.onCreate + nút Restore trong Settings. <span class="hot">KHÔNG onboarding paywall.</span></li>
+        </ul>
+
+        <div class="rule-h">⬛ Ẩn upsell khi ĐÃ premium</div>
+        <p>Rà soát <span class="hot">TOÀN BỘ</span> bề mặt "upsell/mua premium", ẩn/vô hiệu hoá khi <span class="hot">ĐÃ premium</span>. Dùng helper <span class="kw">ui/common/Premium.kt</span> → <span class="kw">rememberIsPremium()</span> (refresh lúc ON_RESUME) — <span class="hot">KHÔNG</span> đọc isPremium 1 lần bằng remember. Bọc <span class="kw">if (!isPremium) { … }</span> / early-return cho:</p>
+        <div class="reqs">
+          <div class="req"><span class="n">1</span><span>Nút / vương miện "Unlock Premium / Get PRO" trên header các màn.</span></div>
+          <div class="req"><span class="n">2</span><span>Banner premium trong Settings và bất kỳ màn nào khác.</span></div>
+          <div class="req"><span class="n">3</span><span>Mọi row / CTA "Get Premium / Nâng cấp / Remove Ads".</span></div>
+          <div class="req"><span class="n">4</span><span>Các badge "PRO", nhãn khoá tính năng, chấm / khoá trên item premium.</span></div>
+        </div>
+        <p style="margin-top:12px"><b>Yêu cầu:</b> reactive (ẩn <span class="hot">NGAY</span> sau khi mua, kể cả khi quay lại từ màn IAP nhờ ON_RESUME); xử lý async-load của Play (đừng để loé upsell lâu); giữ layout không vỡ khi ẩn (bỏ luôn Spacer thừa); build sạch (JBR17 + <span class="kw">./gradlew :app:assembleDebug</span>). Liệt kê từng chỗ đã sửa.</p>
+      </div>
+    </div>
+
+    <div class="note">✓ <b>Test thủ công và bổ sung IAP.</b></div>
+  </section>
+
+  <!-- BƯỚC 6 -->
+  <section class="step" id="b6" style="--accent:var(--b6)">
+    <div class="step-head">
+      <div class="badge">6</div>
+      <div><h2>Hoàn thiện phần language</h2>
+      <span class="sub">languageScreen của wrapper + dịch 29 ngôn ngữ</span></div>
+    </div>
+
+    <div class="prompt">
+      <div class="prompt-head"><span class="prompt-label">PROMPT 1</span>
+        <button class="copy-btn" onclick="copyPrompt(this)">Copy</button></div>
+      <div class="prompt-body">
+        <p>Sử dụng màn <span class="kw">languageScreen.kt</span> của base-application-wrapper cho tính năng language trong Setting, đổi theme <span class="kw">languageScreen.kt</span> giống với app.</p>
+        <p>Rà soát source code, đưa các text còn <span class="hot">hardcode</span> cần dịch vào <span class="kw">string.xml</span>; các string cũ không liên quan thì xoá đi.</p>
+        <p>Tiếp đó dựa vào <span class="kw">string.xml</span> default, tạo <span class="hot">29 agent</span> dịch sang các ngôn ngữ tương ứng — áp dụng cho module <span class="kw">app</span> và module <span class="kw">base-application-wrapper</span>.</p>
+      </div>
+    </div>
+
+    <div class="note">✓ <b>Test thủ công và bàn giao cho tester.</b></div>
+  </section>
+
+  <!-- BƯỚC 7 -->
+  <section class="step" id="b7" style="--accent:var(--b7)">
+    <div class="step-head">
+      <div class="badge">7</div>
+      <div><h2>Test bằng AI agent</h2>
+      <span class="sub">Đi sâu mọi màn · click mọi thứ · thực hiện mọi tính năng — không bỏ sót</span></div>
+    </div>
+
+    <div class="prompt">
+      <div class="prompt-head"><span class="prompt-label">PROMPT 1</span>
+        <button class="copy-btn" onclick="copyPrompt(this)">Copy</button></div>
+      <div class="prompt-body">
+        <p>App đã clone đã build và cài trên điện thoại thật kết nối ADB. Đóng vai tester, test <span class="hot">TOÀN BỘ</span> app tự động qua ADB (uiautomator dump + input tap/swipe/text + screencap + logcat). Mục tiêu: đi sâu vào <span class="hot">TẤT CẢ</span> các màn, thực hiện <span class="hot">TẤT CẢ</span> tính năng, <span class="hot">không bỏ sót</span> — chỗ nào click được thì click.</p>
+        <div class="reqs">
+          <div class="req"><span class="n">1</span><span><span class="kw">pm clear</span> trước khi bắt đầu để test từ luồng first-open (splash → intro/onboarding → language → home). Dialog permission của hệ thống → chọn Allow.</span></div>
+          <div class="req"><span class="n">2</span><span>Ở <span class="hot">mỗi màn</span>: dump UI tree + screenshot, liệt kê <span class="hot">MỌI</span> phần tử clickable (kể cả icon/image/text/item <span class="hot">nghi ngờ</span> click được). Duy trì <span class="kw">tree màn đã thăm</span> + <span class="kw">checklist clickable từng màn</span>; click <span class="hot">TỪNG</span> phần tử, back rồi click phần tử tiếp theo, đến khi checklist của màn đó hết sạch mới sang màn khác.</span></div>
+          <div class="req"><span class="n">3</span><span>Không chỉ mở màn — thực hiện tính năng <span class="hot">end-to-end</span>: nhập text, chọn item, bật/tắt switch, kéo slider, scroll hết list, swipe hết pager, hoàn thành flow tới kết quả cuối (save/apply/export/set…) và <span class="hot">verify kết quả</span> (file tạo ra, toast, state đổi).</span></div>
+          <div class="req"><span class="n">4</span><span>Đối chiếu logcat AppLog: vào màn phải có log <span class="kw">SCREEN</span>, click phải có log <span class="kw">CLICK</span>, gọi BE phải có log curl + response. Ghi lại mọi chỗ <span class="hot">THIẾU log</span>.</span></div>
+          <div class="req"><span class="n">5</span><span>Ghi nhận mọi lỗi: crash/ANR (logcat <span class="kw">FATAL</span>), màn trắng, icon vô hình/tint sai, text hardcode chưa dịch, layout vỡ/tràn, nút không phản hồi, ảnh placeholder, ads sai vị trí (đối chiếu Bước 4), upsell còn hiện khi đã premium (Bước 5).</span></div>
+          <div class="req"><span class="n">6</span><span>An toàn: <span class="hot">KHÔNG</span> mua IAP thật (mở paywall, chụp lại rồi back), không gửi SMS/gọi điện thật; hành động phá huỷ (delete/reset data) để test <span class="hot">CUỐI CÙNG</span>.</span></div>
+          <div class="req"><span class="n">7</span><span>Nếu phát hiện <span class="hot">bỏ sót</span> (màn chưa clone, tính năng chưa hoàn thiện, thiếu ads/IAP/language, thiếu log) → <span class="hot">quay lại thực hiện các bước trước</span> tương ứng (Bước 2–3 tính năng, Bước 4 ads, Bước 5 IAP, Bước 6 language) để bổ sung, build + cài lại, rồi <span class="hot">test lại từ đầu</span>. Lặp đến khi không còn bỏ sót.</span></div>
+          <div class="req"><span class="n">8</span><span>Chỉ kết thúc khi <span class="hot">mọi màn</span> trong tree đã thăm và <span class="hot">mọi clickable</span> đã click ≥ 1 lần. Báo cáo cuối: tree màn (đường đi), bảng clickable từng màn (OK / không phản hồi), danh sách bug kèm screenshot, danh sách log thiếu, các mục đã quay lại fix.</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="note">✓ Chạy sau <b>Bước 3</b> (tính năng xong) và chạy lại sau <b>Bước 4–6</b> trước khi bàn giao cho tester.</div>
+  </section>
+
+  <footer>QUY TRÌNH CLONE &amp; HOÀN THIỆN APP · VN_NAMI · 7 bước</footer>
+</div>
+
+<script>
+  var PARAM_KEYS = ['app_name_origin','id_app','source_base','source_clone','name_file','file_tich_hop'];
+  var DEFAULTS = {
+    app_name_origin:'Sample App',
+    id_app:'com.example.sampleapp',
+    source_base:'~/VN_NAMI/<scaffold-base>',
+    source_clone:'~/VN_NAMI/<app-clone>',
+    name_file:'/Downloads/CLONE_PROMPT_macOS.md',
+    file_tich_hop:'/Downloads/HUONG_DAN_TICH_HOP.md'
+  };
+  var LS_KEY = 'vnnami_clone_params';
+
+  // Tách package từ link Play Store / market:// (hoặc trả lại nguyên nếu đã là package)
+  function extractPackage(s){
+    if(!s) return s;
+    s = s.trim();
+    var m = s.match(/[?&]id=([a-zA-Z0-9._]+)/);
+    return m ? m[1] : s;
+  }
+
+  function getVals(){
+    var o = {};
+    PARAM_KEYS.forEach(function(k){
+      var el = document.getElementById('f_'+k);
+      var v = el ? el.value.trim() : '';
+      o[k] = v || DEFAULTS[k];
+    });
+    return o;
+  }
+
+  function flashSaved(){
+    var t = document.getElementById('savedTag');
+    if(!t) return;
+    t.classList.add('show');
+    clearTimeout(flashSaved._t);
+    flashSaved._t = setTimeout(function(){ t.classList.remove('show'); }, 1200);
+  }
+
+  function applyParams(save){
+    var p = getVals();
+    document.querySelectorAll('[data-p]').forEach(function(el){
+      var k = el.getAttribute('data-p');
+      if(p[k] != null) el.textContent = p[k];
+    });
+    document.querySelectorAll('[data-href="store"]').forEach(function(a){
+      a.setAttribute('href', 'https://play.google.com/store/apps/details?id=' + p.id_app);
+    });
+    if(save){
+      try{ localStorage.setItem(LS_KEY, JSON.stringify(p)); flashSaved(); }catch(e){}
+    }
+  }
+
+  function loadLS(){
+    try{
+      var s = localStorage.getItem(LS_KEY);
+      if(!s) return;
+      var p = JSON.parse(s);
+      PARAM_KEYS.forEach(function(k){
+        var el = document.getElementById('f_'+k);
+        if(el && p[k] != null) el.value = p[k];
+      });
+    }catch(e){}
+  }
+
+  function resetParams(){
+    PARAM_KEYS.forEach(function(k){
+      var el = document.getElementById('f_'+k);
+      if(el) el.value = '';                 // xoá về trạng thái hint
+    });
+    var sl = document.getElementById('f_store_link'); if(sl) sl.value = '';
+    setNameStatus('Tự lấy khi nhập link/package · hoặc gõ tay', '');
+    try{ localStorage.removeItem(LS_KEY); }catch(e){}
+    applyParams(false);
+    flashSaved();
+  }
+
+  function copyPrompt(btn){
+    var body = btn.closest('.prompt').querySelector('.prompt-body');
+    var text = body.innerText.replace(/\n{3,}/g,'\n\n').trim();
+    copyText(text, btn, '✓ Đã copy', 'Copy');
+  }
+
+  function copyAll(){
+    var out = [];
+    document.querySelectorAll('section.step').forEach(function(sec){
+      var title = sec.querySelector('h2') ? sec.querySelector('h2').textContent : '';
+      var badge = sec.querySelector('.badge') ? sec.querySelector('.badge').textContent : '';
+      var prompts = sec.querySelectorAll('.prompt-body');
+      if(prompts.length){
+        out.push('══════ BƯỚC ' + badge + ' · ' + title + ' ══════');
+        prompts.forEach(function(pb, i){
+          out.push('--- PROMPT ' + (i+1) + ' ---');
+          out.push(pb.innerText.replace(/\n{3,}/g,'\n\n').trim());
+          out.push('');
+        });
+      }
+    });
+    copyText(out.join('\n'), event.target, '✓ Đã copy toàn bộ', '⧉ Copy toàn bộ prompt');
+  }
+
+  function copyText(text, btn, okLabel, orig){
+    var done = function(){
+      if(!btn) return;
+      btn.textContent = okLabel; btn.classList.add('ok');
+      setTimeout(function(){ btn.textContent = orig; btn.classList.remove('ok'); }, 1400);
+    };
+    if(navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(text).then(done, function(){ fallbackCopy(text, done); });
+    } else { fallbackCopy(text, done); }
+  }
+  function fallbackCopy(text, done){
+    var ta = document.createElement('textarea'); ta.value = text;
+    ta.style.position='fixed'; ta.style.opacity='0'; document.body.appendChild(ta);
+    ta.select();
+    try{ document.execCommand('copy'); done(); }catch(e){}
+    document.body.removeChild(ta);
+  }
+
+  // ===== Tự lấy TÊN app từ Play Store (đi vòng CORS-proxy vì file:// bị CORS chặn) =====
+  function setNameStatus(txt, cls){
+    var s = document.getElementById('nameStatus');
+    if(!s) return;
+    s.textContent = txt;
+    s.classList.remove('ok','err');
+    if(cls) s.classList.add(cls);
+  }
+  function parseAppName(txt){
+    if(!txt) return '';
+    var name = '';
+    var m = txt.match(/^Title:\s*(.+)$/m);              // Jina Reader trả "Title: <tên>"
+    if(m) name = m[1];
+    if(!name){                                          // fallback HTML: og:title / <title>
+      try{
+        var doc = new DOMParser().parseFromString(txt, 'text/html');
+        var og = doc.querySelector('meta[property="og:title"]');
+        name = og ? og.getAttribute('content')
+                  : (doc.querySelector('title') ? doc.querySelector('title').textContent : '');
+      }catch(e){}
+    }
+    return (name || '').replace(/\s*[-–|]\s*Apps on Google Play\s*$/i,'').trim();
+  }
+  function fetchTextTimeout(url, ms){                    // timeout CỨNG → không bao giờ treo
+    var ctrl = new AbortController();
+    var t = setTimeout(function(){ ctrl.abort(); }, ms);
+    return fetch(url, {signal: ctrl.signal}).then(function(r){
+      clearTimeout(t);
+      if(!r.ok) throw new Error('http ' + r.status);
+      return r.text();
+    }, function(e){ clearTimeout(t); throw e; });
+  }
+  var _nameTimer;
+  function scheduleFetchName(){
+    clearTimeout(_nameTimer);
+    var pkg = extractPackage(document.getElementById('f_id_app').value);
+    if(!pkg || pkg.indexOf('.') < 0) return;
+    _nameTimer = setTimeout(function(){ fetchAppName(pkg); }, 400);
+  }
+  function fetchAppName(pkg){
+    if(!pkg || pkg.indexOf('.') < 0){ setNameStatus('Package chưa hợp lệ', 'err'); return; }
+    var input = document.getElementById('f_app_name_origin');
+    setNameStatus('⏳ Đang lấy tên…', '');
+    var page = 'https://play.google.com/store/apps/details?id=' + pkg + '&hl=en';
+    var sources = [
+      'https://r.jina.ai/' + page,                                       // chính (nhẹ, ổn định)
+      'https://api.allorigins.win/raw?url=' + encodeURIComponent(page)   // dự phòng
+    ];
+    var tries = sources.map(function(u){
+      return fetchTextTimeout(u, 9000).then(function(t){
+        var n = parseAppName(t);
+        if(n) return n;
+        throw new Error('no name');
+      });
+    });
+    Promise.any(tries).then(function(name){        // cái nào xong trước & hợp lệ thì lấy
+      input.value = name;
+      applyParams(true);
+      setNameStatus('✓ ' + name, 'ok');
+    }).catch(function(){
+      setNameStatus('✕ Không lấy được — nhập tay (proxy đang bận)', 'err');
+    });
+  }
+
+  // "feature" sửa trực tiếp trong Bước 3 → câu bên dưới tự mirror
+  (function(){
+    var edit = document.getElementById('featEdit');
+    var ref  = document.getElementById('featRef');
+    if(edit && ref){
+      edit.addEventListener('input', function(){
+        ref.textContent = edit.textContent.trim() || 'compress video';
+      });
+    }
+  })();
+
+  // init
+  loadLS();
+  PARAM_KEYS.forEach(function(k){
+    var el = document.getElementById('f_'+k);
+    if(!el) return;
+    el.addEventListener('input', function(){
+      if(k === 'id_app'){
+        var pkg = extractPackage(el.value);
+        if(pkg !== el.value){
+          el.value = pkg;              // dán link → rút gọn còn package
+        }
+        scheduleFetchName();           // và tự lấy tên app
+      }
+      applyParams(true);
+    });
+  });
+  var fetchBtn = document.getElementById('fetchName');
+  if(fetchBtn) fetchBtn.addEventListener('click', function(){
+    fetchAppName(extractPackage(document.getElementById('f_id_app').value));
+  });
+  // Ô "Link Play Store" riêng → tách package vào id_app + tự lấy tên
+  var storeLink = document.getElementById('f_store_link');
+  if(storeLink) storeLink.addEventListener('input', function(){
+    var pkg = extractPackage(storeLink.value);
+    if(pkg && pkg.indexOf('.') > -1){
+      document.getElementById('f_id_app').value = pkg;
+      applyParams(true);
+      scheduleFetchName();
+    }
+  });
+  applyParams(false);
+</script>
+</body>
+</html>
