@@ -335,7 +335,11 @@
               <div><span class="hot">CẤM inter</span> trên: hành động lõi (bật đèn pin, play nhạc), tap Home→Detail đầu tiên, tab mặc định/tab đầu, và sau rewarded ad (tránh 2 ads liên tiếp).</div>
             </div></div></div>
           <div class="req"><span class="n">2</span><div class="rq"><b>Banner = phủ nền:</b> bottom-pinned dưới navbar (<span class="kw">navigationBarsPadding</span>), gần như mọi màn kể cả onboarding/intro (<span class="kw">banner_intro</span>); gom key theo họ màn hình (<span class="kw">banner_home</span> / <span class="kw">banner_inner</span> / <span class="kw">banner_tool</span>…).</div></div>
-          <div class="req"><span class="n">3</span><div class="rq"><b>Native = đúng 1 slot:</b> chèn <span class="hot">SAU item đầu tiên</span> của list chính (<span class="kw">native_list</span>), no-media; gần toggle/button thì thêm spacer 24dp chống mis-click.</div></div>
+          <div class="req"><span class="n">3</span><div class="rq"><b>Native (no-media) — chèn theo danh sách:</b>
+            <div class="subdash">
+              <div><b>List dọc:</b> đặt <span class="hot">sau card đầu tiên</span> (<span class="kw">native_list</span>), rồi <span class="hot">lặp lại 1 native mỗi 4 card</span> kể từ native đầu; gần toggle/button thêm spacer 24dp chống mis-click.</div>
+              <div><b>List ngang:</b> nếu native là card dọc (dạng lá bài) → đặt <span class="hot">sau card thứ 3</span> trong danh sách.</div>
+            </div></div></div>
           <div class="req"><span class="n">4</span><div class="rq"><span class="hot">VÙNG CẤM:</span> Settings / Language / Policy / Feedback <span class="hot">KHÔNG BAO GIỜ</span> có ads.</div></div>
           <div class="req"><span class="n">5</span><div class="rq">Không tự làm counter tần suất — dùng interval toàn cục qua key <span class="kw">inter_splash</span> của SDK.</div></div>
           <div class="req"><span class="n">6</span><div class="rq">Rewarded chỉ dùng khi có cơ chế "xem ad đổi 1 lượt free" (kiểu Authenticator), còn lại bỏ.</div></div>
